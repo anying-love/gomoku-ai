@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>五子棋人机对决</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'STSong', 'SimSun', serif;
+            background: #f5f2e9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 背景纹理 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(139, 69, 19, 0.03) 35px, rgba(139, 69, 19, 0.03) 70px),
+                repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba(139, 69, 19, 0.03) 35px, rgba(139, 69, 19, 0.03) 70px);
+            z-index: -1;
+        }
+
+        /* 标题区域 */
+        .title-section {
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .main-title {
+            font-size: 48px;
+            font-weight: normal;
+            color: #2c2416;
+            letter-spacing: 8px;
+            position: relative;
+            display: inline-block;
+            padding: 0 40px;
+        }
+
+        .main-title::before,
+        .main-title::after {
+            content: '◆';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #8b4513;
+            font-size: 20px;
+        }
+
+        .main-title::before {
+            left: 0;
+        }
+
+        .main-title::after {
+            right: 0;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-top: 10px;
+            letter-spacing: 4px;
+        }
+
+        /* 游戏容器 */
+        .game-container {
+            background: #faf8f3;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 
+                0 0 0 2px #d4c5b9,
+                0 0 0 4px #8b4513,
+                0 10px 30px rgba(0, 0, 0, 0.1);
+            max-width: 520px;
+            width: 100%;
+            position: relative;
+        }
+
+        /* 中式边框装饰 */
+        .game-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #8b4513 25%, transparent 25%, transparent 75%, #8b4513 75%, #8b4513),
+                        linear-gradient(45deg, #8b4513 25%, transparent 25%, transparent 75%, #8b4513 75%, #8b4513);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+            border-radius: 12px;
+            z-index: -1;
+        }
+
+        /* 比分板 */
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding: 15px 20px;
+            background: linear-gradient(to bottom, #fff, #f5f2e9);
+            border: 1px solid #d4c5b9;
+            border-radius: 8px;
+            position: relative;
+        }
+
+        .scoreboard::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            background: linear-gradient(45deg, #8b4513, #d4c5b9, #8b4513);
+            border-radius: 8px;
+            z-index: -1;
+            opacity: 0.3;
+        }
+
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .player-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-avatar::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.3), transparent);
+            animation: avatarShine 3s infinite;
+        }
+
+        @keyframes avatarShine {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .player-avatar.human {
+            background: linear-gradient(135deg, #2c2416, #1a1410);
+        }
+
+        .player-avatar.ai {
+            background: linear-gradient(135deg, #8b4513, #654321);
+        }
+
+        .player-details {
+            text-align: left;
+        }
+
+        .player-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c2416;
+            margin-bottom: 2px;
+        }
+
+        .player-desc {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .vs-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #8b4513;
+            position: relative;
+            padding: 0 20px;
+        }
+
+        .vs-text::before,
+        .vs-text::after {
+            content: '•';
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #d4c5b9;
+        }
+
+        .vs-text::before {
+            left: 0;
+        }
+
+        .vs-text::after {
+            right: 0;
+        }
+
+        /* 棋盘区域 */
+        .board-wrapper {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%;
+            margin-bottom: 25px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 
+                inset 0 0 20px rgba(0, 0, 0, 0.1),
+                0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .board {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(90deg, #d4c5b9 1px, transparent 1px),
+                linear-gradient(180deg, #d4c5b9 1px, transparent 1px),
+                url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="wood"><feTurbulence baseFrequency="0.02" numOctaves="5" result="noise"/><feDiffuseLighting in="noise" lighting-color="white" surfaceScale="1"><feDistantLight azimuth="45" elevation="60"/></feDiffuseLighting></filter><rect width="100" height="100" filter="url(%23wood)" opacity="0.3"/></svg>');
+            background-size: 
+                calc(100% / 14) calc(100% / 14),
+                calc(100% / 14) calc(100% / 14),
+                100px 100px;
+            background-position: 
+                calc(100% / 28) 0,
+                0 calc(100% / 28),
+                0 0;
+            background-color: #e8dcc6;
+        }
+
+        /* 星位标记 */
+        .star-point {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #2c2416;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+        }
+
+        .grid {
+            position: absolute;
+            top: 3.33%;
+            left: 3.33%;
+            width: 93.33%;
+            height: 93.33%;
+        }
+
+        .grid-line {
+            position: absolute;
+            background: #2c2416;
+            opacity: 0.8;
+        }
+
+        .grid-line.horizontal {
+            width: 100%;
+            height: 1px;
+        }
+
+        .grid-line.vertical {
+            width: 1px;
+            height: 100%;
+        }
+
+        .intersection {
+            position: absolute;
+            width: 6.66%;
+            height: 6.66%;
+            transform: translate(-50%, -50%);
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .intersection::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 90%;
+            height: 90%;
+            transform: translate(-50%, -50%);
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(44, 36, 22, 0.1), transparent);
+            transition: all 0.3s ease;
+        }
+
+        .intersection:hover::before {
+            transform: translate(-50%, -50%) scale(1.1);
+            background: radial-gradient(circle, rgba(44, 36, 22, 0.2), transparent);
+        }
+
+        /* 棋子样式 */
+        .piece {
+            position: absolute;
+            width: 85%;
+            height: 85%;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            animation: placeStone 0.6s ease;
+        }
+
+        @keyframes placeStone {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+                opacity: 1;
+            }
+        }
+
+        .piece.black {
+            background: radial-gradient(circle at 30% 30%, #3a3a3a, #000);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.5),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .piece.black::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.3), transparent 40%);
+        }
+
+        .piece.white {
+            background: radial-gradient(circle at 30% 30%, #fff, #f0f0f0);
+            box-shadow: 
+                0 2px 8px rgba(0, 0, 0, 0.2),
+                inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 墨迹扩散效果 */
+        .ink-effect {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.1), transparent 70%);
+            animation: inkSpread 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        @keyframes inkSpread {
+            0% {
+                transform: translate(-50%, -50%) scale(0.5);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+            }
+        }
+
+        /* AI思考动画 */
+        .ai-thinking {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            opacity: 0;
+            visibility: hidden;
+            z-index: 100;
+        }
+
+        .ai-thinking.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .ai-thinking::before {
+            content: '思';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+            color: #8b4513;
+            animation: thinkingPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes thinkingPulse {
+            0%, 100% {
+                opacity: 0.3;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+        }
+
+        /* 控制按钮 */
+        .controls {
+            display: flex;
+            justify-content: center;
+        }
+
+        .game-btn {
+            padding: 12px 40px;
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: linear-gradient(to bottom, #fff, #f5f2e9);
+            color: #2c2416;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(139, 69, 19, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .game-btn:hover::before {
+            left: 100%;
+        }
+
+        .game-btn:hover {
+            background: linear-gradient(to bottom, #f5f2e9, #e8dcc6);
+            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
+            transform: translateY(-2px);
+        }
+
+        /* 消息弹窗 */
+        .message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: #faf8f3;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 
+                0 0 0 2px #d4c5b9,
+                0 0 0 4px #8b4513,
+                0 20px 40px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            max-width: 90%;
+        }
+
+        .message.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .message h2 {
+            font-size: 32px;
+            font-weight: normal;
+            color: #2c2416;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+
+        .message p {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+
+        .message button {
+            padding: 10px 30px;
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            background: linear-gradient(to bottom, #fff, #f5f2e9);
+            color: #2c2416;
+            letter-spacing: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .message button:hover {
+            background: linear-gradient(to bottom, #f5f2e9, #e8dcc6);
+            box-shadow: 0 4px 12px rgba(139, 69, 19, 0.3);
+        }
+
+        /* 墨迹胜利特效 */
+        .ink-victory {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .ink-splash {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(0, 0, 0, 0.3), transparent);
+            animation: inkSplash 2s ease-out forwards;
+        }
+
+        @keyframes inkSplash {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(3);
+                opacity: 0;
+            }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 480px) {
+            .main-title {
+                font-size: 36px;
+                letter-spacing: 4px;
+            }
+            
+            .game-container {
+                padding: 20px;
+            }
+            
+            .player-avatar {
+                width: 40px;
+                height: 40px;
+                font-size: 16px;
+            }
+            
+            .player-name {
+                font-size: 16px;
+            }
+            
+            .vs-text {
+                font-size: 20px;
+            }
+            
+            .game-btn {
+                padding: 10px 30px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="title-section">
+        <h1 class="main-title">五子棋人机对决</h1>
+        <p class="subtitle">古韵新智 · 弈道传承</p>
+    </div>
+
+    <div class="game-container">
+        <div class="scoreboard">
+            <div class="player-info">
+                <div class="player-avatar human">人</div>
+                <div class="player-details">
+                    <div class="player-name">棋手</div>
+                    <div class="player-desc">执黑先行</div>
+                </div>
+            </div>
+            
+            <div class="vs-text">对弈</div>
+            
+            <div class="player-info">
+                <div class="player-details">
+                    <div class="player-name">智弈</div>
+                    <div class="player-desc">进化算法</div>
+                </div>
+                <div class="player-avatar ai">AI</div>
+            </div>
+        </div>
+
+        <div class="board-wrapper">
+            <div class="board">
+                <div class="grid" id="grid"></div>
+                <div class="ai-thinking" id="aiThinking"></div>
+                <!-- 星位标记 -->
+                <div class="star-point" style="left: 25%; top: 25%;"></div>
+                <div class="star-point" style="left: 75%; top: 25%;"></div>
+                <div class="star-point" style="left: 50%; top: 50%;"></div>
+                <div class="star-point" style="left: 25%; top: 75%;"></div>
+                <div class="star-point" style="left: 75%; top: 75%;"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="game-btn" onclick="game.reset()">重新对弈</button>
+        </div>
+    </div>
+
+    <div class="message" id="message">
+        <h2 id="messageTitle"></h2>
+        <p id="messageText"></p>
+        <button onclick="game.hideMessage()">再来一局</button>
+    </div>
+
+    <div class="ink-victory" id="inkVictory"></div>
+
+    <script>
+        // 轻量级AI实现
+        class LightweightAI {
+            constructor(size) {
+                this.size = size;
+                this.weights = { attack: 0.35, defense: 0.30, position: 0.20, connectivity: 0.15 };
+                this.patternScores = { five: 100000, openFour: 10000, four: 1000, openThree: 1000, three: 100, openTwo: 100, two: 10 };
+                this.mood = { aggressive: 0.5, defensive: 0.5, confidence: 0.5 };
+                this.dirs = [[0,1], [1,0], [1,1], [1,-1]];
+            }
+
+            evaluateBoard(board, player) {
+                let score = 0;
+                const patterns = this.countPatterns(board, player);
+                score += patterns.five * this.patternScores.five;
+                score += patterns.openFour * this.patternScores.openFour;
+                score += patterns.four * this.patternScores.four;
+                score += patterns.openThree * this.patternScores.openThree;
+                score += patterns.three * this.patternScores.three;
+                score += patterns.openTwo * this.patternScores.openTwo;
+                score += patterns.two * this.patternScores.two;
+                return score;
+            }
+
+            countPatterns(board, player) {
+                const patterns = { five: 0, openFour: 0, four: 0, openThree: 0, three: 0, openTwo: 0, two: 0 };
+                
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (board[i][j] !== player) continue;
+                        
+                        for (const [dx, dy] of this.dirs) {
+                            const pattern = this.getPatternAt(board, i, j, dx, dy, player);
+                            if (pattern) patterns[pattern]++;
+                        }
+                    }
+                }
+                return patterns;
+            }
+
+            getPatternAt(board, x, y, dx, dy, player) {
+                let count = 1, openEnds = 0;
+                
+                for (let i = 1; i < 5; i++) {
+                    const nx = x + dx * i, ny = y + dy * i;
+                    if (nx < 0 || nx >= this.size || ny < 0 || ny >= this.size) break;
+                    if (board[nx][ny] === player) count++;
+                    else if (board[nx][ny] === null) { openEnds++; break; }
+                    else break;
+                }
+                
+                for (let i = 1; i < 5; i++) {
+                    const nx = x - dx * i, ny = y - dy * i;
+                    if (nx < 0 || nx >= this.size || ny < 0 || ny >= this.size) break;
+                    if (board[nx][ny] === player) count++;
+                    else if (board[nx][ny] === null) { openEnds++; break; }
+                    else break;
+                }
+                
+                if (count >= 5) return 'five';
+                if (count === 4 && openEnds === 2) return 'openFour';
+                if (count === 4 && openEnds === 1) return 'four';
+                if (count === 3 && openEnds === 2) return 'openThree';
+                if (count === 3 && openEnds === 1) return 'three';
+                if (count === 2 && openEnds === 2) return 'openTwo';
+                if (count === 2 && openEnds === 1) return 'two';
+                return null;
+            }
+
+            updateMood(board, turnCount) {
+                const aiScore = this.evaluateBoard(board, 'white');
+                const playerScore = this.evaluateBoard(board, 'black');
+                
+                if (aiScore > playerScore * 1.5) {
+                    this.mood.aggressive = Math.min(1, this.mood.aggressive + 0.1);
+                    this.mood.confidence = Math.min(1, this.mood.confidence + 0.1);
+                    this.mood.defensive = Math.max(0, this.mood.defensive - 0.05);
+                } else if (playerScore > aiScore * 1.5) {
+                    this.mood.defensive = Math.min(1, this.mood.defensive + 0.1);
+                    this.mood.aggressive = Math.max(0, this.mood.aggressive - 0.05);
+                    this.mood.confidence = Math.max(0, this.mood.confidence - 0.05);
+                } else {
+                    this.mood.aggressive = 0.5 + (this.mood.aggressive - 0.5) * 0.9;
+                    this.mood.defensive = 0.5 + (this.mood.defensive - 0.5) * 0.9;
+                    this.mood.confidence = 0.5 + (this.mood.confidence - 0.5) * 0.9;
+                }
+                
+                if (turnCount > 30) {
+                    this.mood.aggressive = Math.min(1, this.mood.aggressive + 0.05);
+                }
+            }
+
+            getScore(board, x, y) {
+                if (board[x][y] !== null) return -Infinity;
+                
+                board[x][y] = 'white';
+                const aiScore = this.evaluateBoard(board, 'white');
+                board[x][y] = 'black';
+                const defenseScore = this.evaluateBoard(board, 'black');
+                board[x][y] = null;
+                
+                const centerDist = Math.abs(x - 7) + Math.abs(y - 7);
+                const posScore = (14 - centerDist) * 10;
+                
+                let connScore = 0;
+                for (const [dx, dy] of this.dirs) {
+                    for (let i = 1; i <= 2; i++) {
+                        if (x + dx * i >= 0 && x + dx * i < this.size && y + dy * i >= 0 && y + dy * i < this.size) {
+                            if (board[x + dx * i][y + dy * i] === 'white') connScore += 3 - i;
+                        }
+                        if (x - dx * i >= 0 && x - dx * i < this.size && y - dy * i >= 0 && y - dy * i < this.size) {
+                            if (board[x - dx * i][y - dy * i] === 'white') connScore += 3 - i;
+                        }
+                    }
+                }
+                
+                const attackW = this.weights.attack * this.mood.aggressive;
+                const defenseW = this.weights.defense * this.mood.defensive;
+                const posW = this.weights.position;
+                const connW = this.weights.connectivity * this.mood.confidence;
+                
+                return aiScore * attackW + defenseScore * defenseW + posScore * posW + connScore * connW;
+            }
+
+            getBestMove(board, turnCount) {
+                this.updateMood(board, turnCount);
+                
+                let bestScore = -Infinity;
+                let bestMove = null;
+                
+                const candidates = new Set();
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        if (board[i][j] !== null) {
+                            for (let di = -2; di <= 2; di++) {
+                                for (let dj = -2; dj <= 2; dj++) {
+                                    const ni = i + di, nj = j + dj;
+                                    if (ni >= 0 && ni < this.size && nj >= 0 && nj < this.size && board[ni][nj] === null) {
+                                        candidates.add(`${ni},${nj}`);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (candidates.size === 0) {
+                    candidates.add('7,7');
+                    candidates.add('7,8');
+                    candidates.add('8,7');
+                    candidates.add('8,8');
+                }
+                
+                for (const pos of candidates) {
+                    const [x, y] = pos.split(',').map(Number);
+                    const score = this.getScore(board, x, y);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMove = { x, y };
+                    }
+                }
+                
+                return bestMove;
+            }
+        }
+
+        // 游戏主类
+        class Gomoku {
+            constructor() {
+                this.size = 15;
+                this.board = Array(this.size).fill(null).map(() => Array(this.size).fill(null));
+                this.currentPlayer = 'black';
+                this.gameOver = false;
+                this.turnCount = 0;
+                this.ai = new LightweightAI(this.size);
+                this.init();
+            }
+
+            init() {
+                this.createBoard();
+                this.updateUI();
+            }
+
+            createBoard() {
+                const grid = document.getElementById('grid');
+                grid.innerHTML = '';
+                
+                for (let i = 0; i < this.size; i++) {
+                    const hLine = document.createElement('div');
+                    hLine.className = 'grid-line horizontal';
+                    hLine.style.top = `${(i / (this.size - 1)) * 100}%`;
+                    grid.appendChild(hLine);
+                    
+                    const vLine = document.createElement('div');
+                    vLine.className = 'grid-line vertical';
+                    vLine.style.left = `${(i / (this.size - 1)) * 100}%`;
+                    grid.appendChild(vLine);
+                }
+                
+                for (let i = 0; i < this.size; i++) {
+                    for (let j = 0; j < this.size; j++) {
+                        const intersection = document.createElement('div');
+                        intersection.className = 'intersection';
+                        intersection.style.left = `${(j / (this.size - 1)) * 100}%`;
+                        intersection.style.top = `${(i / (this.size - 1)) * 100}%`;
+                        intersection.onclick = () => this.handleClick(i, j);
+                        grid.appendChild(intersection);
+                    }
+                }
+            }
+
+            handleClick(x, y) {
+                if (this.gameOver || this.currentPlayer !== 'black' || this.board[x][y]) return;
+                
+                this.placePiece(x, y, 'black');
+                if (!this.gameOver) {
+                    this.currentPlayer = 'white';
+                    this.updateUI();
+                    setTimeout(() => this.aiMove(), 300);
+                }
+            }
+
+            placePiece(x, y, player) {
+                this.board[x][y] = player;
+                this.turnCount++;
+                
+                const intersections = document.querySelectorAll('.intersection');
+                const index = x * this.size + y;
+                const piece = document.createElement('div');
+                piece.className = `piece ${player}`;
+                intersections[index].appendChild(piece);
+                
+                // 添加墨迹扩散效果
+                const inkEffect = document.createElement('div');
+                inkEffect.className = 'ink-effect';
+                if (player === 'black') {
+                    inkEffect.style.background = 'radial-gradient(circle, rgba(0, 0, 0, 0.2), transparent 70%)';
+                } else {
+                    inkEffect.style.background = 'radial-gradient(circle, rgba(100, 100, 100, 0.1), transparent 70%)';
+                }
+                intersections[index].appendChild(inkEffect);
+                
+                setTimeout(() => inkEffect.remove(), 1000);
+                
+                if (this.checkWin(x, y, player)) {
+                    this.gameOver = true;
+                    this.showMessage(player === 'black' ? '棋手胜！' : '智弈胜！', `对弈结束，共 ${this.turnCount} 手`);
+                    if (player === 'black') {
+                        this.createInkVictory();
+                    }
+                } else if (this.turnCount === this.size * this.size) {
+                    this.gameOver = true;
+                    this.showMessage('和棋！', '棋盘已满，不分胜负');
+                }
+                
+                this.updateUI();
+            }
+
+            aiMove() {
+                if (this.gameOver) return;
+                
+                document.getElementById('aiThinking').classList.add('show');
+                
+                setTimeout(() => {
+                    const move = this.ai.getBestMove(this.board, this.turnCount);
+                    if (move) {
+                        this.placePiece(move.x, move.y, 'white');
+                        if (!this.gameOver) {
+                            this.currentPlayer = 'black';
+                            this.updateUI();
+                        }
+                    }
+                    document.getElementById('aiThinking').classList.remove('show');
+                }, 800);
+            }
+
+            checkWin(x, y, player) {
+                for (const [dx, dy] of [[0,1], [1,0], [1,1], [1,-1]]) {
+                    let count = 1;
+                    
+                    for (let i = 1; i < 5; i++) {
+                        const nx = x + dx * i, ny = y + dy * i;
+                        if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size && this.board[nx][ny] === player) {
+                            count++;
+                        } else break;
+                    }
+                    
+                    for (let i = 1; i < 5; i++) {
+                        const nx = x - dx * i, ny = y - dy * i;
+                        if (nx >= 0 && nx < this.size && ny >= 0 && ny < this.size && this.board[nx][ny] === player) {
+                            count++;
+                        } else break;
+                    }
+                    
+                    if (count >= 5) return true;
+                }
+                return false;
+            }
+
+            updateUI() {
+                // 这里可以添加回合指示器等UI更新
+            }
+
+            createInkVictory() {
+                const inkVictory = document.getElementById('inkVictory');
+                
+                for (let i = 0; i < 8; i++) {
+                    setTimeout(() => {
+                        const splash = document.createElement('div');
+                        splash.className = 'ink-splash';
+                        splash.style.left = Math.random() * 100 + '%';
+                        splash.style.top = Math.random() * 100 + '%';
+                        splash.style.width = splash.style.height = Math.random() * 200 + 100 + 'px';
+                        inkVictory.appendChild(splash);
+                        
+                        setTimeout(() => splash.remove(), 2000);
+                    }, i * 200);
+                }
+            }
+
+            showMessage(title, text) {
+                const message = document.getElementById('message');
+                document.getElementById('messageTitle').textContent = title;
+                document.getElementById('messageText').textContent = text;
+                message.classList.add('show');
+            }
+
+            hideMessage() {
+                document.getElementById('message').classList.remove('show');
+                this.reset();
+            }
+
+            reset() {
+                this.board = Array(this.size).fill(null).map(() => Array(this.size).fill(null));
+                this.currentPlayer = 'black';
+                this.gameOver = false;
+                this.turnCount = 0;
+                this.ai = new LightweightAI(this.size);
+                this.createBoard();
+                this.updateUI();
+                document.getElementById('inkVictory').innerHTML = '';
+            }
+        }
+
+        const game = new Gomoku();
+    </script>
+</body>
+</html>
